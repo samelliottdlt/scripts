@@ -1,6 +1,6 @@
 import fs from "fs";
 import chalk from "chalk";
-import inquirer from "inquirer";
+import input from "@inquirer/input";
 import { ArgumentsCamelCase, CommandModule } from "yargs";
 
 export default function createCommandModule(): CommandModule {
@@ -38,14 +38,9 @@ export default function createCommandModule(): CommandModule {
       }
 
       if (symbolFile === undefined) {
-        const answers = await inquirer.prompt([
-          {
-            name: "symbolFile",
-            type: "input",
-            message: "Please provide the path to the symbol file:",
-          },
-        ]);
-        symbolFile = answers.symbolFile;
+        symbolFile = await input({
+          message: "Please provide the path to the symbol file:",
+        });
         if (symbolFile === "") {
           console.log(chalk.red("Symbol file path is required"));
           return;
@@ -53,16 +48,11 @@ export default function createCommandModule(): CommandModule {
       }
 
       if (callStack === undefined) {
-        const answers = await inquirer.prompt([
-          {
-            name: "callStack",
-            type: "input",
-            message: `Please provide the call stack symbol indexes (${
-              delimiter === " " ? "space" : `"${delimiter}"`
-            } separated):`,
-          },
-        ]);
-        callStack = answers.callStack;
+        callStack = await input({
+          message: `Please provide the call stack symbol indexes (${
+            delimiter === " " ? "space" : `"${delimiter}"`
+          } separated):`,
+        });
         if (callStack === "") {
           console.log(chalk.red("Call stack is required"));
           return;

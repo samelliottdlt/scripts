@@ -8,18 +8,17 @@
     "lint": "eslint src --ext .ts",
     "tsc": "tsc",
     "start": "npm run tsc && node dist/call-stack.js",
-    "build": "npm run tsc && esbuild dist/cli.js --bundle --platform=node --target=node18 --outfile=dist/out.js",
+    "build": "npm run tsc && esbuild dist/cli.js --minify --bundle --platform=node --target=node18 --outfile=dist/out.js",
     "package": "npm run build && pkg dist/out.js --out-path ./bin"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@inquirer/input": "^1.2.2",
     "chalk": "^5.2.0",
-    "inquirer": "^9.2.7",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
-    "@types/inquirer": "^9.0.3",
     "@types/node": "^20.3.1",
     "@types/yargs": "^17.0.24",
     "@typescript-eslint/eslint-plugin": "^5.60.0",
