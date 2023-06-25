@@ -60,7 +60,7 @@ async function getArgsAndResolve(): Promise<void> {
     callStack = answers.callStack;
   }
 
-  if (symbolFile !== undefined && callStack != null) {
+  if (symbolFile !== undefined && callStack !== undefined) {
     await resolveCallStack(callStack, symbolFile);
   }
 }
