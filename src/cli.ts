@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { resolveCallStack } from "./call-stack.js";
 import yargs from "yargs/yargs";
 import { hideBin } from "yargs/helpers";
@@ -67,5 +65,5 @@ async function getArgsAndResolve(): Promise<void> {
 
 getArgsAndResolve().catch((err) => {
   console.error(err);
-  process.exit(1);
+  throw err;
 });

@@ -9,8 +9,7 @@ export async function resolveCallStack(
   const symbolFileContent = fs.readFileSync(symbolsFilePath, "utf8");
   const symbolLines = symbolFileContent.split("\n");
 
-  type SymbolMap = Record<number, string>;
-  const symbolMap: SymbolMap = {};
+  const symbolMap: Record<number, string> = {};
 
   // Parse the symbol file
   symbolLines.forEach((line) => {
