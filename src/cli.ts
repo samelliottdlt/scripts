@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
-import { resolveCallStack } from './call-stack.js';
-import yargs from 'yargs/yargs';
-import { hideBin } from 'yargs/helpers';
-import { updateShell } from './update-shell.js';
-import inquirer from 'inquirer';
+import { resolveCallStack } from './call-stack.js'
+import yargs from 'yargs/yargs'
+import { hideBin } from 'yargs/helpers'
+import { updateShell } from './update-shell.js'
+import inquirer from 'inquirer'
 
 interface CommandLineArgs {
-  callStack?: number[];
-  symbolFile?: string;
-  addToPath?: boolean;
+  callStack?: number[]
+  symbolFile?: string
+  addToPath?: boolean
 }
 
 const argv = yargs(hideBin(process.argv))
@@ -25,25 +25,25 @@ const argv = yargs(hideBin(process.argv))
     type: 'boolean',
     describe: 'If passed, adds the binary to the PATH'
   })
-  .argv as CommandLineArgs;
+  .argv as CommandLineArgs
 
-if (argv.addToPath) {
-  updateShell();
+if (argv.addToPath ?? false) {
+  updateShell()
 }
 
-async function getArgsAndResolve() {
-  let symbolFile = argv.symbolFile;
-  let callStack = argv.callStack;
+async function getArgsAndResolve (): Promise<void> {
+  let symbolFile = argv.symbolFile
+  let callStack = argv.callStack
 
   if (symbolFile === undefined) {
     const answers = await inquirer.prompt([
       {
         name: 'symbolFile',
         type: 'input',
-        message: 'Please provide the path to the symbol file:',
-      },
-    ]);
-    symbolFile = answers.symbolFile;
+        message: 'Please provide the path to the symbol file:'
+      }
+    ])
+    symbolFile = answers.symbolFile
   }
 
   if (callStack === undefined) {
@@ -52,17 +52,21 @@ async function getArgsAndResolve() {
         name: 'callStack',
         type: 'input',
         message: 'Please provide the call stack symbol indexes (comma separated):',
-        filter(value) {
-          return value.split(',').map(Number);
+        filter (value) {
+          return value.split(',').map(Number)
         }
-      },
-    ]);
-    callStack = answers.callStack;
+      }
+    ])
+    callStack = answers.callStack
   }
 
-  if (symbolFile && callStack) {
-    resolveCallStack(callStack, symbolFile);
+  if (symbolFile !== undefined && (callStack != null)) {
+    await resolveCallStack(callStack, symbolFile)
   }
 }
 
-getArgsAndResolve();
+getArgsAndResolve()
+  .catch(err => {
+    console.error(err)
+    process.exit(1)
+  })
