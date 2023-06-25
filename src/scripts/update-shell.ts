@@ -2,6 +2,17 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
+export default function createCommandModule() {
+  return {
+    command: "update-shell",
+    aliases: ["us"],
+    describe: "Update the shell configuration",
+    handler: () => {
+      updateShell();
+    },
+  };
+}
+
 export function updateShell(): void {
   // Define path to the binary
   const binaryPath = path.dirname(process.execPath);
