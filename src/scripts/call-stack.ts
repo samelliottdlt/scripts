@@ -7,7 +7,7 @@ export default function createCommandModule(): CommandModule {
   return {
     command: "callstack [symbolFile] [callStack]",
     aliases: ["cs"],
-    describe: "Process the symbol file and handle call stack",
+    describe: "Parse call stack from a symbol file",
     builder: (yargs) => {
       return yargs
         .positional("symbolFile", {
