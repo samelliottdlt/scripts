@@ -2,15 +2,24 @@
   "name": "scripts",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node call-stack.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "tsc": "tsc",
+    "start": "npm run tsc && node dist/call-stack.js",
+    "build": "npm run tsc && esbuild dist/cli.js --bundle --platform=node --outfile=dist/out.js",
+    "package": "npm run build && pkg dist/out.js --out-path ./bin"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "chalk": "^5.2.0"
+    "@types/inquirer": "^9.0.3",
+    "@types/node": "^20.3.1",
+    "@types/yargs": "^17.0.24",
+    "chalk": "^5.2.0",
+    "esbuild": "^0.18.7",
+    "inquirer": "^9.2.7",
+    "pkg": "^5.8.1",
+    "typescript": "^5.1.3",
+    "yargs": "^17.7.2"
   }
 }
