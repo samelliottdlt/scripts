@@ -10,17 +10,18 @@ export default async function main() {
 
   try {
     console.log("Pulling latest...");
-    execSync("git pull --ff-only", { cwd: root, stdio: "inherit" });
+    const result = execSync("git pull --ff-only", { cwd: root, encoding: "utf8" }).trim();
+    const updated = !result.includes("Already up to date");
 
     console.log("Installing dependencies...");
     const lockExists = await stat(join(root, "package-lock.json")).then(() => true, () => false);
-    execSync(lockExists ? "npm ci --silent" : "npm i --silent", { cwd: root, stdio: "inherit" });
+    execSync(lockExists ? "npm ci --silent" : "npm i --silent", { cwd: root, stdio: "ignore" });
 
     console.log("Re-linking...");
-    execSync("npm link --force --silent", { cwd: root, stdio: "inherit" });
+    execSync("npm link --force --silent", { cwd: root, stdio: "ignore" });
 
     await writeFile(join(root, ".last-update-check"), String(Date.now()));
-    console.log("✓ Up to date.");
+    console.log(updated ? "✓ Updated!" : "✓ Already up to date.");
   } catch {
     console.error("Update failed. Try manually: cd ~/.s && git pull");
     process.exit(1);
