@@ -4,11 +4,15 @@ Personal scripts, runnable anywhere via the `s` command.
 
 ## Install
 
-```bash
-# macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/samelliottdlt/scripts/main/install.sh | bash
+**macOS / Linux**
 
-# Windows (PowerShell)
+```bash
+curl -fsSL https://raw.githubusercontent.com/samelliottdlt/scripts/main/install.sh | bash
+```
+
+**Windows (PowerShell)**
+
+```powershell
 irm https://raw.githubusercontent.com/samelliottdlt/scripts/main/install.ps1 | iex
 ```
 
