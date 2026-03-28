@@ -1,5 +1,5 @@
 {
-  "name": "@sam/scripts",
+  "name": "scripts",
   "version": "1.0.0",
   "description": "Sam's personal scripts",
   "type": "module",

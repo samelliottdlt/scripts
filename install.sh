@@ -44,7 +44,7 @@ fi
 
 # ── link ─────────────────────────────────────────────────────────────────────
 cd "$S_DIR"
-npm link --silent 2>/dev/null || npm link
+npm link --force --silent 2>/dev/null || npm link --force
 
 echo ""
 echo "✓ Installed! Run: s hello-world"

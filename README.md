@@ -1,4 +1,4 @@
-# @sam/scripts
+# scripts
 
 Personal scripts, runnable anywhere via the `s` command.
 

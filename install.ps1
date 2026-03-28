@@ -42,7 +42,7 @@ if (Test-Path (Join-Path $SDir ".git")) {
 
 # ── link ─────────────────────────────────────────────────────────────────────
 Push-Location $SDir
-npm link --silent
+npm link --force --silent
 Pop-Location
 
 Write-Host ""
