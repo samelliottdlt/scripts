@@ -1,0 +1,16 @@
+{
+  "name": "@sam/scripts",
+  "version": "1.0.0",
+  "description": "Sam's personal scripts",
+  "type": "module",
+  "bin": {
+    "s": "./bin/s.mjs"
+  },
+  "scripts": {
+    "link": "npm link"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}
