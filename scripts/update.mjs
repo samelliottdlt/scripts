@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { writeFile } from "node:fs/promises";
+import { writeFile, stat } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +11,10 @@ export default async function main() {
   try {
     console.log("Pulling latest...");
     execSync("git pull --ff-only", { cwd: root, stdio: "inherit" });
+
+    console.log("Installing dependencies...");
+    const lockExists = await stat(join(root, "package-lock.json")).then(() => true, () => false);
+    execSync(lockExists ? "npm ci --silent" : "npm i --silent", { cwd: root, stdio: "inherit" });
 
     console.log("Re-linking...");
     execSync("npm link --force --silent", { cwd: root, stdio: "inherit" });

@@ -42,8 +42,15 @@ else
   git clone --quiet "$REPO" "$S_DIR"
 fi
 
-# ── link ─────────────────────────────────────────────────────────────────────
+# ── install deps + link ───────────────────────────────────────────────────────
 cd "$S_DIR"
+
+if [ -f package-lock.json ]; then
+  npm ci --silent
+else
+  npm i --silent
+fi
+
 npm link --force --silent 2>/dev/null || npm link --force
 
 echo ""

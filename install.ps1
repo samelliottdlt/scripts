@@ -40,8 +40,15 @@ if (Test-Path (Join-Path $SDir ".git")) {
     git clone --quiet $Repo $SDir
 }
 
-# ── link ─────────────────────────────────────────────────────────────────────
+# ── install deps + link ───────────────────────────────────────────────────────
 Push-Location $SDir
+
+if (Test-Path "package-lock.json") {
+    npm ci --silent
+} else {
+    npm i --silent
+}
+
 npm link --force --silent
 Pop-Location
 
