@@ -1,0 +1,24 @@
+import { execSync } from "node:child_process";
+import { writeFile } from "node:fs/promises";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+export const description = "Pull latest scripts and re-link";
+
+export default async function main() {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+  try {
+    console.log("Pulling latest...");
+    execSync("git pull --ff-only", { cwd: root, stdio: "inherit" });
+
+    console.log("Re-linking...");
+    execSync("npm link --force --silent", { cwd: root, stdio: "inherit" });
+
+    await writeFile(join(root, ".last-update-check"), String(Date.now()));
+    console.log("✓ Up to date.");
+  } catch {
+    console.error("Update failed. Try manually: cd ~/.s && git pull");
+    process.exit(1);
+  }
+}
