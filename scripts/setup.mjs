@@ -1,5 +1,4 @@
 import { execSync } from "node:child_process";
-import { access } from "node:fs/promises";
 
 export const description = "Check dev environment for required tools";
 
