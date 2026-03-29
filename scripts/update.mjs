@@ -9,13 +9,13 @@ export default async function main() {
   const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
   try {
-    const head = (sha) => execSync(`git rev-parse ${sha}`, { cwd: root, encoding: "utf8" }).trim();
-    const before = head("HEAD");
+    const head = () => execSync("git rev-parse HEAD", { cwd: root, encoding: "utf8" }).trim();
+    const before = head();
 
     console.log("Pulling latest...");
-    execSync("git pull --ff-only", { cwd: root, stdio: "ignore" });
+    execSync("git pull --ff-only --quiet", { cwd: root, stdio: "inherit" });
 
-    const after = head("HEAD");
+    const after = head();
     const pulled = before !== after;
 
     console.log("Installing dependencies...");
