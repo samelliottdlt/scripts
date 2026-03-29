@@ -6,6 +6,12 @@ import { fileURLToPath } from "node:url";
 export const description = "Pull latest scripts and re-link";
 
 export default async function main() {
+  if (process.env.S_DEV) {
+    console.error("Error: 'update' is disabled in dev mode — it would overwrite your local checkout.");
+    console.error("Run 's update' from the global installation instead.");
+    process.exit(1);
+  }
+
   const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
   try {

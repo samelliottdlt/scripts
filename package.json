@@ -7,7 +7,7 @@
     "s": "./bin/s.mjs"
   },
   "scripts": {
-    "dev": "node bin/s.mjs",
+    "dev": "S_DEV=1 node bin/s.mjs",
     "link": "npm link"
   },
   "engines": {
