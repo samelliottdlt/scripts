@@ -45,6 +45,14 @@ export default function main(args) {
 
 Then just run it: `s my-script`
 
+## Development
+
+To test scripts locally without affecting the globally linked `s`:
+
+```bash
+npm run dev -- my-script
+```
+
 ## How it works
 
 - `bin/s.mjs` is a tiny Node CLI dispatcher registered via npm's `bin` field.
