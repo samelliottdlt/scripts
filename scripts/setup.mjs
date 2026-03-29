@@ -1,6 +1,6 @@
-import { execSync } from "node:child_process";
+import { execSync, spawnSync } from "node:child_process";
 
-export const description = "Check dev environment for required tools";
+export const description = "Check dev environment for required tools (--install to auto-install)";
 
 const TOOLS = [
   {
@@ -8,10 +8,10 @@ const TOOLS = [
     cmd: "git --version",
     parse: (out) => out.match(/git version ([\d.]+)/)?.[1],
     install: {
-      darwin: "brew install git",
-      arch: "sudo pacman -S git",
-      linux: "sudo apt install git   # or your distro's package manager",
-      win32: "winget install Git.Git",
+      darwin: { run: "brew install git" },
+      arch: { run: "sudo pacman -S --noconfirm git" },
+      linux: { hint: "sudo apt install git   # or your distro's package manager" },
+      win32: { run: "winget install --accept-package-agreements --accept-source-agreements Git.Git" },
     },
   },
   {
@@ -19,10 +19,10 @@ const TOOLS = [
     cmd: "chezmoi --version",
     parse: (out) => out.match(/v?([\d.]+)/)?.[1],
     install: {
-      darwin: "brew install chezmoi",
-      arch: "sudo pacman -S chezmoi",
-      linux: 'sh -c "$(curl -fsLS get.chezmoi.io)"',
-      win32: "winget install twpayne.chezmoi",
+      darwin: { run: "brew install chezmoi" },
+      arch: { run: "sudo pacman -S --noconfirm chezmoi" },
+      linux: { run: 'sh -c "$(curl -fsLS get.chezmoi.io)"' },
+      win32: { run: "winget install --accept-package-agreements --accept-source-agreements twpayne.chezmoi" },
     },
   },
   {
@@ -30,10 +30,10 @@ const TOOLS = [
     cmd: "fnm --version",
     parse: (out) => out.match(/(\d[\d.]+)/)?.[1],
     install: {
-      darwin: "brew install fnm",
-      arch: "sudo pacman -S fnm",
-      linux: "curl -fsSL https://fnm.vercel.app/install | bash",
-      win32: "winget install Schniz.fnm",
+      darwin: { run: "brew install fnm" },
+      arch: { run: "sudo pacman -S --noconfirm fnm" },
+      linux: { run: "curl -fsSL https://fnm.vercel.app/install | bash" },
+      win32: { run: "winget install --accept-package-agreements --accept-source-agreements Schniz.fnm" },
     },
   },
   {
@@ -41,7 +41,7 @@ const TOOLS = [
     cmd: "node --version",
     parse: (out) => out.match(/v?([\d.]+)/)?.[1],
     install: {
-      _all: "fnm install --lts   # requires fnm",
+      _all: { run: "fnm install --lts", hint: "Requires fnm" },
     },
   },
   {
@@ -49,7 +49,7 @@ const TOOLS = [
     cmd: "npm --version",
     parse: (out) => out.trim(),
     install: {
-      _all: "Comes with Node — install Node first",
+      _all: { hint: "Comes with Node — install Node first" },
     },
   },
   {
@@ -57,10 +57,10 @@ const TOOLS = [
     cmd: "rustup --version",
     parse: (out) => out.match(/rustup ([\d.]+)/)?.[1],
     install: {
-      darwin: 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh',
-      arch: "sudo pacman -S rustup && rustup default stable",
-      linux: 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh',
-      win32: "winget install Rustlang.Rustup",
+      darwin: { run: 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y' },
+      arch: { run: "sudo pacman -S --noconfirm rustup && rustup default stable" },
+      linux: { run: 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y' },
+      win32: { run: "winget install --accept-package-agreements --accept-source-agreements Rustlang.Rustup" },
     },
   },
   {
@@ -68,7 +68,7 @@ const TOOLS = [
     cmd: "cargo --version",
     parse: (out) => out.match(/cargo ([\d.]+)/)?.[1],
     install: {
-      _all: "Comes with Rust — install rustup first, then: rustup default stable",
+      _all: { run: "rustup default stable", hint: "Requires rustup" },
     },
   },
   {
@@ -76,10 +76,10 @@ const TOOLS = [
     cmd: "gh --version",
     parse: (out) => out.match(/gh version ([\d.]+)/)?.[1],
     install: {
-      darwin: "brew install gh",
-      arch: "sudo pacman -S github-cli",
-      linux: "https://github.com/cli/cli/blob/trunk/docs/install_linux.md",
-      win32: "winget install GitHub.cli",
+      darwin: { run: "brew install gh" },
+      arch: { run: "sudo pacman -S --noconfirm github-cli" },
+      linux: { hint: "https://github.com/cli/cli/blob/trunk/docs/install_linux.md" },
+      win32: { run: "winget install --accept-package-agreements --accept-source-agreements GitHub.cli" },
     },
   },
 ];
@@ -107,9 +107,9 @@ function checkTool(tool) {
   }
 }
 
-function getInstallHint(tool, platform) {
+function getInstallEntry(tool, platform) {
   const inst = tool.install;
-  return inst._all ?? inst[platform] ?? inst.linux ?? "See official docs";
+  return inst._all ?? inst[platform] ?? inst.linux ?? { hint: "See official docs" };
 }
 
 const PLATFORM_LABELS = {
@@ -119,7 +119,41 @@ const PLATFORM_LABELS = {
   win32: "Windows",
 };
 
-export default function main() {
+function installTool(tool, platform) {
+  const entry = getInstallEntry(tool, platform);
+  if (!entry.run) {
+    console.log(`  ⚠  ${tool.name}: manual install required`);
+    console.log(`     → ${entry.hint}\n`);
+    return false;
+  }
+
+  console.log(`  ▸  Installing ${tool.name}...`);
+  const result = spawnSync(entry.run, {
+    shell: true,
+    stdio: "inherit",
+    timeout: 120_000,
+  });
+
+  if (result.status !== 0) {
+    console.log(`  ✗  ${tool.name}: install failed (exit ${result.status})`);
+    if (entry.hint) console.log(`     → ${entry.hint}`);
+    console.log();
+    return false;
+  }
+
+  // Verify it's now available
+  const recheck = checkTool(tool);
+  if (recheck.installed) {
+    console.log(`  ✓  ${tool.name} ${recheck.version}\n`);
+    return true;
+  }
+
+  console.log(`  ⚠  ${tool.name}: installed but not found in PATH — you may need to restart your shell\n`);
+  return false;
+}
+
+export default function main(args = []) {
+  const shouldInstall = args.includes("--install");
   const platform = detectPlatform();
   console.log(`Platform: ${PLATFORM_LABELS[platform]}\n`);
 
@@ -137,18 +171,33 @@ export default function main() {
     }
   }
 
-  // ── Missing tool guidance ──
   if (missing.length === 0) {
     console.log("\n✓ All tools installed!");
     return;
   }
 
-  console.log(`\n${missing.length} missing tool${missing.length > 1 ? "s" : ""}:\n`);
-  for (const tool of missing) {
-    const hint = getInstallHint(tool, platform);
-    console.log(`  ${tool.name}`);
-    console.log(`    → ${hint}\n`);
+  // ── Install or show guidance ──
+  if (shouldInstall) {
+    console.log(`\nInstalling ${missing.length} missing tool${missing.length > 1 ? "s" : ""}...\n`);
+    let failures = 0;
+    for (const tool of missing) {
+      if (!installTool(tool, platform)) failures++;
+    }
+    if (failures === 0) {
+      console.log("✓ All tools installed!");
+    } else {
+      console.log(`${failures} tool${failures > 1 ? "s" : ""} could not be auto-installed — see above for manual steps.`);
+      process.exit(1);
+    }
+  } else {
+    console.log(`\n${missing.length} missing tool${missing.length > 1 ? "s" : ""}:\n`);
+    for (const tool of missing) {
+      const entry = getInstallEntry(tool, platform);
+      const display = entry.run ?? entry.hint;
+      console.log(`  ${tool.name}`);
+      console.log(`    → ${display}\n`);
+    }
+    console.log("Run 's setup --install' to auto-install.");
+    process.exit(1);
   }
-
-  process.exit(1);
 }
