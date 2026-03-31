@@ -53,6 +53,108 @@ Opens all your projects in a tmux/pmux session with AI coding agents. Designed
 for a workflow where you start the day, run one command, and every project is
 ready to go with an AI assistant and a shell.
 
+#### Prerequisites (Windows work laptop)
+
+You need four things installed before `s code` works. Do these in order — each
+step depends on the previous one.
+
+**1. WSL 2 (Windows Subsystem for Linux)**
+
+WSL gives you a real Linux kernel on Windows. Docker and tmux/pmux both need it.
+
+```powershell
+# Run PowerShell as Administrator
+wsl --install
+```
+
+This installs Ubuntu by default. Reboot when prompted. On first launch it asks
+you to create a Linux username/password.
+
+Verify:
+```powershell
+wsl --version          # should show WSL 2, kernel 5.x+
+```
+
+> **ARM laptops:** WSL 2 runs natively on ARM64 Windows — no extra steps.
+
+**2. Docker Desktop**
+
+Docker Desktop uses WSL 2 as its backend. Containers run as Linux containers
+inside WSL — no Hyper-V overhead.
+
+1. Download from https://www.docker.com/products/docker-desktop/
+2. Run the installer — select **"Use WSL 2 instead of Hyper-V"** when prompted
+3. After install, open Docker Desktop → Settings → General → confirm
+   **"Use the WSL 2 based engine"** is checked
+4. Settings → Resources → WSL Integration → enable for your distro (Ubuntu)
+
+Verify (from PowerShell or WSL terminal):
+```bash
+docker run --rm hello-world
+```
+
+> **RAM:** Docker Desktop defaults to using up to 50% of system RAM. You can
+> cap it in Settings → Resources, or create `%USERPROFILE%\.wslconfig`:
+> ```ini
+> [wsl2]
+> memory=8GB
+> ```
+> 8GB is comfortable for 3–4 containers with Node projects.
+
+> **ARM laptops:** Docker Desktop supports ARM64 natively. Most official images
+> (node, python, etc.) are multi-arch — they'll pull the `linux/arm64` variant
+> automatically. If a project needs an x86-only image, set `"platform":
+> "linux/amd64"` in the project config — Docker will emulate via QEMU (slower
+> but works).
+
+**3. pmux (or tmux)**
+
+pmux is a Windows-native tmux alternative written in Rust. Pick one:
+
+**Option A — pmux (recommended for Windows):**
+```powershell
+# Requires Rust/cargo (run: winget install Rustlang.Rustup)
+cargo install pmux
+```
+
+**Option B — tmux via WSL:**
+tmux comes pre-installed on most WSL distros. If not:
+```bash
+# Inside WSL
+sudo apt install tmux
+```
+
+> `s code` auto-detects whichever is available (tries pmux first).
+
+**4. Node.js ≥ 18**
+
+Needed to run the `s` CLI itself.
+
+```powershell
+# Option A: winget
+winget install Schniz.fnm
+fnm install --lts
+
+# Option B: direct download
+# https://nodejs.org/
+```
+
+Verify:
+```bash
+node --version         # should be 18+
+```
+
+**5. Install `s` itself**
+
+```powershell
+irm https://raw.githubusercontent.com/samelliottdlt/scripts/main/install.ps1 | iex
+```
+
+Then configure your workspace:
+```bash
+s code --init
+```
+
 #### Quick start
 
 ```bash
