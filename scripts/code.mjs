@@ -21,6 +21,12 @@ const DEFAULT_CONFIG = {
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 
+function expandHome(p) {
+  if (p === "~") return homedir();
+  if (p.startsWith("~/") || p.startsWith("~\\")) return join(homedir(), p.slice(2));
+  return p;
+}
+
 async function fileExists(p) {
   try {
     await access(p);
@@ -133,7 +139,7 @@ function ensureContainer(project, config) {
 
     // Volume strategy: bind-mount if path is set, named volume otherwise
     if (project.path) {
-      args.push("-v", `${project.path}:/workspace`);
+      args.push("-v", `${expandHome(project.path)}:/workspace`);
     } else {
       args.push("-v", `${vname(project.name)}:/workspace`);
     }
@@ -237,7 +243,7 @@ function buildSession(mux, session, projects, config) {
       muxRun(mux, ["split-window", "-v", "-t", win]);
     } else {
       // local — just cd and run
-      const dir = p.path || ".";
+      const dir = expandHome(p.path || ".");
       muxRun(mux, ["send-keys", "-t", win, `cd "${dir}" && ${invoke}`, "Enter"]);
       muxRun(mux, ["split-window", "-v", "-t", win]);
       muxRun(mux, ["send-keys", "-t", win, `cd "${dir}"`, "Enter"]);
