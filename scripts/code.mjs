@@ -256,7 +256,7 @@ async function runInit() {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
 
   try {
-    console.log("\n▸ s work — configuration wizard\n");
+    console.log("\n▸ s code — configuration wizard\n");
 
     if (await fileExists(CONFIG_PATH)) {
       const ans = await prompt(rl, "Config already exists. Overwrite? (y/N)", "n");
@@ -332,8 +332,8 @@ async function runInit() {
 
     await saveConfig(config);
     console.log(`\n✓ Saved to ${CONFIG_PATH}`);
-    console.log(`  Edit anytime: s work --edit`);
-    console.log(`  Launch:       s work\n`);
+    console.log(`  Edit anytime: s code --edit`);
+    console.log(`  Launch:       s code\n`);
   } finally {
     rl.close();
   }
@@ -379,7 +379,7 @@ async function runStop(config) {
 
 function printHelp() {
   console.log(`
-Usage: s work [flags]
+Usage: s code [flags]
 
   Launch a daily workspace with tmux/pmux sessions for your projects.
 
@@ -419,11 +419,11 @@ async function runWork() {
   const config = await loadConfig();
 
   if (!config) {
-    console.log("  No config found. Run: s work --init\n");
+    console.log("  No config found. Run: s code --init\n");
     process.exit(1);
   }
   if (!config.projects?.length) {
-    console.log("  No projects configured. Run: s work --edit\n");
+    console.log("  No projects configured. Run: s code --edit\n");
     process.exit(1);
   }
 
