@@ -216,44 +216,35 @@ function sessionUp(mux, name) {
 function buildSession(mux, session, projects, config) {
   const defaultInvoke = config.defaults?.agent?.invoke || "copilot";
 
+  // Single window with all projects as panes
+  muxRun(mux, ["new-session", "-d", "-s", session, "-n", "work"]);
+  const win = `${session}:work`;
+
   projects.forEach((p, i) => {
     const invoke = p.agent?.invoke || defaultInvoke;
 
-    // Create window
-    if (i === 0) {
-      muxRun(mux, ["new-session", "-d", "-s", session, "-n", p.name]);
-    } else {
-      muxRun(mux, ["new-window", "-t", session, "-n", p.name]);
+    // First project uses the initial pane; subsequent ones split
+    if (i > 0) {
+      muxRun(mux, ["split-window", "-t", win, "-h"]);
+      muxRun(mux, ["select-layout", "-t", win, "tiled"]);
     }
 
-    const win = `${session}:${p.name}`;
+    const pane = `${win}.${i}`;
 
     if (p.type === "container") {
       const cn = cname(p.name);
-      // Top pane: agent inside container
-      muxRun(mux, ["send-keys", "-t", win, `docker exec -it ${cn} ${invoke}`, "Enter"]);
-      // Bottom pane: shell inside container
-      muxRun(mux, ["split-window", "-v", "-t", win]);
-      muxRun(mux, ["send-keys", "-t", win, `docker exec -it ${cn} bash`, "Enter"]);
-    } else if (p.type === "codespace") {
-      const cmd = p.command || "gh codespace ssh";
-      // Top pane: passthrough command (e.g. gh codespace ssh)
-      muxRun(mux, ["send-keys", "-t", win, cmd, "Enter"]);
-      // Bottom pane: local shell
-      muxRun(mux, ["split-window", "-v", "-t", win]);
+      muxRun(mux, ["send-keys", "-t", pane, `docker exec -it ${cn} ${invoke}`, "Enter"]);
+    } else if (p.type === "remote") {
+      muxRun(mux, ["send-keys", "-t", pane, p.command, "Enter"]);
     } else {
-      // local — just cd and run
       const dir = expandHome(p.path || ".");
-      muxRun(mux, ["send-keys", "-t", win, `cd "${dir}" && ${invoke}`, "Enter"]);
-      muxRun(mux, ["split-window", "-v", "-t", win]);
-      muxRun(mux, ["send-keys", "-t", win, `cd "${dir}"`, "Enter"]);
+      muxRun(mux, ["send-keys", "-t", pane, `cd "${dir}" && ${invoke}`, "Enter"]);
     }
-
-    // 70/30 split — top pane bigger for the agent
-    muxRun(mux, ["resize-pane", "-t", `${win}.0`, "-y", "70%"]);
   });
 
-  muxRun(mux, ["select-window", "-t", `${session}:${projects[0].name}`]);
+  // Final tiled layout for even distribution, then select first pane
+  muxRun(mux, ["select-layout", "-t", win, "tiled"]);
+  muxRun(mux, ["select-pane", "-t", `${win}.0`]);
 }
 
 // ── Subcommands ──────────────────────────────────────────────────────────────
@@ -300,7 +291,7 @@ async function runInit() {
       const typeLabel = await choose(rl, "Type:", [
         "container — isolated Docker environment",
         "local — open directly on host",
-        "codespace — passthrough command (e.g. gh codespace ssh)",
+        "remote — arbitrary command (e.g. gh codespace ssh -- copilot)",
       ]);
       const type = typeLabel.split(" —")[0];
       const project = { name, type };
@@ -316,7 +307,7 @@ async function runInit() {
       } else if (type === "local") {
         project.path = await prompt(rl, "Project path", "");
       } else {
-        project.command = await prompt(rl, "Command", "gh codespace ssh");
+        project.command = await prompt(rl, "Command", "");
       }
 
       projects.push(project);
@@ -390,7 +381,8 @@ Usage: s code [flags]
   Launch a daily workspace with tmux/pmux sessions for your projects.
 
 Flags:
-  (none)         Select projects and launch workspace
+  (none)         Launch all projects
+  --select       Interactively pick which projects to launch
   --init,  -i    Interactive configuration wizard
   --edit,  -e    Open config in editor
   --stop,  -s    Stop containers and kill session
@@ -407,12 +399,13 @@ Project types:
   local       Opens directly on the host filesystem (e.g. Visual Studio projects).
               Fields: path
 
-  codespace   Runs a passthrough command (e.g. gh codespace ssh).
+  remote      Runs an arbitrary command (e.g. "gh codespace ssh -- copilot").
+              You control the full command, including any agent invocation.
               Fields: command
 
-Each project window has two panes:
-  Top  (70%)   AI coding agent (configurable via defaults.agent.invoke)
-  Bottom (30%) Shell for manual commands
+All projects open as tiled panes in a single window, each running
+the AI coding agent (configurable via defaults.agent.invoke). Use
+the agent's built-in shell support for running commands directly.
 
 Per-project agent override: set "agent": { "invoke": "..." } on any project.
 
@@ -421,7 +414,7 @@ VS Code + containers:
 `);
 }
 
-async function runWork() {
+async function runWork(selectMode = false) {
   const config = await loadConfig();
 
   if (!config) {
@@ -454,37 +447,41 @@ async function runWork() {
       spawnSync(mux, ["kill-session", "-t", session], { stdio: "ignore" });
     }
 
-    // Show projects and get selection
-    console.log("\nProjects:\n");
-    config.projects.forEach((p, i) => {
-      const info =
-        p.type === "container"
-          ? `container: ${p.image || "node:22-bookworm"}`
-          : p.type === "codespace"
-            ? "codespace"
-            : `local: ${p.path || "."}`;
-      console.log(`  ${i + 1}. ${p.name} (${info})`);
-    });
-
-    const sel = await prompt(rl, "\nSelect projects (e.g. 1,3 or all)", "all");
-    rl.close();
-
+    // Select projects
     let selected;
-    if (sel.toLowerCase() === "all") {
-      selected = [...config.projects];
+    if (selectMode) {
+      console.log("\nProjects:\n");
+      config.projects.forEach((p, i) => {
+        const info =
+          p.type === "container"
+            ? `container: ${p.image || "node:22-bookworm"}`
+            : p.type === "remote"
+              ? `remote: ${p.command}`
+              : `local: ${p.path || "."}`;
+        console.log(`  ${i + 1}. ${p.name} (${info})`);
+      });
+
+      const sel = await prompt(rl, "\nSelect projects (e.g. 1,3 or all)", "all");
+      if (sel.toLowerCase() === "all") {
+        selected = [...config.projects];
+      } else {
+        const nums = sel
+          .split(",")
+          .map((s) => parseInt(s.trim(), 10) - 1);
+        selected = nums
+          .filter((i) => i >= 0 && i < config.projects.length)
+          .map((i) => config.projects[i]);
+      }
+
+      if (!selected.length) {
+        console.log("  No projects selected.");
+        return;
+      }
     } else {
-      const nums = sel
-        .split(",")
-        .map((s) => parseInt(s.trim(), 10) - 1);
-      selected = nums
-        .filter((i) => i >= 0 && i < config.projects.length)
-        .map((i) => config.projects[i]);
+      selected = [...config.projects];
     }
 
-    if (!selected.length) {
-      console.log("  No projects selected.");
-      return;
-    }
+    rl.close();
 
     // Start containers
     const containers = selected.filter((p) => p.type === "container");
@@ -537,5 +534,5 @@ export default async function main(args = []) {
   if (has("--edit", "-e", "edit")) return runEdit(config);
   if (has("--stop", "-s", "stop")) return runStop(config);
 
-  return runWork();
+  return runWork(has("--select"));
 }
