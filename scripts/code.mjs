@@ -12,7 +12,7 @@ const CONFIG_PATH = join(CONFIG_DIR, "work.json");
 const DEFAULT_CONFIG = {
   defaults: {
     multiplexer: "auto",
-    editor: "vim",
+    editor: "code",
     sessionName: "work",
     agent: { invoke: "copilot" },
   },
