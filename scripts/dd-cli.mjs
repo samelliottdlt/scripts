@@ -1,17 +1,13 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, resolve } from "node:path";
+import { installSkill, REPO_SKILLS_DIR, skillDrift } from "../lib/skills.mjs";
 
 export const description = "Install/upgrade DoorDash CLI + agent skill from a release tarball (install | check)";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const WIN = process.platform === "win32";
-const SKILL_DIRS = [
-  join(homedir(), ".copilot", "skills", "dd-cli-usage"),
-  join(homedir(), ".claude", "skills", "dd-cli-usage"),
-];
+const SKILL = "dd-cli-usage";
 
 // Windows has no native build, so we use the linux-amd64 build inside WSL.
 const PLATFORM = WIN
@@ -80,7 +76,7 @@ export default function main(args) {
   const available = tarball.match(/dd-cli-v([\d.]+)-/)?.[1] ?? "unknown";
   const installed = bash(INSTALLED_VERSION).stdout.trim() || "none";
   const skill = buildSkill(tarball);
-  const drifted = SKILL_DIRS.filter((d) => readOr(join(d, "SKILL.md")) !== skill);
+  const drifted = skillDrift(SKILL, skill);
 
   console.log(`Installed: ${installed}`);
   console.log(`Tarball:   ${available}  (${tarball})`);
@@ -101,11 +97,7 @@ export default function main(args) {
   console.log("Installing binary...");
   bash(INSTALL, [toBashPath(tarball)], { inherit: true });
 
-  for (const d of SKILL_DIRS) {
-    mkdirSync(d, { recursive: true });
-    writeFileSync(join(d, "SKILL.md"), skill);
-    console.log(`Skill:     ${join(d, "SKILL.md")}`);
-  }
+  for (const t of installSkill(SKILL, skill)) console.log(`Skill:     ${t}`);
 
   console.log(`✓ dd-cli ${bash(INSTALLED_VERSION).stdout.trim()} installed.`);
   console.log("Restart your agent (or /skills reload) to pick up the skill. First time? Run: dd-cli login");
@@ -134,7 +126,7 @@ function buildSkill(tarball) {
     process.exit(1);
   }
   let skill = vendor.stdout.trimEnd() + "\n";
-  if (WIN) skill += "\n" + readFileSync(join(ROOT, "skills", "dd-cli-usage", "windows-notes.md"), "utf8").trim() + "\n";
+  if (WIN) skill += "\n" + readFileSync(join(REPO_SKILLS_DIR, SKILL, "windows-notes.md"), "utf8").trim() + "\n";
   return skill;
 }
 
@@ -153,10 +145,6 @@ function bash(script, args = [], { root = false, inherit = false } = {}) {
 function toBashPath(p) {
   if (!WIN) return p;
   return spawnSync("wsl.exe", ["-e", "wslpath", "-a", p], { encoding: "utf8" }).stdout.trim();
-}
-
-function readOr(p) {
-  return existsSync(p) ? readFileSync(p, "utf8") : null;
 }
 
 function compareVersions(a, b) {

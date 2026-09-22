@@ -53,6 +53,9 @@ fi
 
 npm link --force --silent 2>/dev/null || npm link --force
 
+node bin/s.mjs skills install >/dev/null
+
 echo ""
-echo "✓ Installed! Run: s hello-world"
+echo "✓ Installed! Run: s"
 echo "  Scripts live in $S_DIR/scripts/"
+echo "  Agent skills installed to ~/.copilot/skills and ~/.claude/skills"

@@ -50,8 +50,10 @@ if (Test-Path "package-lock.json") {
 }
 
 npm link --force --silent
+node bin/s.mjs skills install | Out-Null
 Pop-Location
 
 Write-Host ""
-Write-Host "Done! Run: s hello-world"
+Write-Host "Done! Run: s"
 Write-Host "  Scripts live in $SDir\scripts\"
+Write-Host "  Agent skills installed to ~\.copilot\skills and ~\.claude\skills"

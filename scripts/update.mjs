@@ -31,6 +31,9 @@ export default async function main() {
     console.log("Re-linking...");
     execSync("npm link --force --silent", { cwd: root, stdio: "ignore" });
 
+    console.log("Installing agent skills...");
+    execSync("node bin/s.mjs skills install", { cwd: root, stdio: "ignore" });
+
     await writeFile(join(root, ".last-update-check"), String(Date.now()));
     console.log(pulled ? `✓ Updated! (${before.slice(0, 7)} → ${after.slice(0, 7)})` : "✓ Already up to date.");
   } catch {
