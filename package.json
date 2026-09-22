@@ -4,7 +4,8 @@
   "description": "Sam's personal scripts",
   "type": "module",
   "bin": {
-    "s": "./bin/s.mjs"
+    "s": "./bin/s.mjs",
+    "dd-cli": "./bin/dd-cli.mjs"
   },
   "scripts": {
     "dev": "S_DEV=1 node bin/s.mjs",
