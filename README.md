@@ -75,9 +75,17 @@ committed here; both come from the tarball each time.
 
 - **Windows:** the binary runs inside WSL. On ARM machines, the script installs amd64
   multiarch and `qemu-user-static` so the x86-64 build can run. It also installs `wslu`
-  so `dd-cli login` can open the Windows browser via `wslview`.
+  so `dd-cli login` can open the Windows browser via `wslview`, and `libsecret-tools` to copy
+  an existing gnome-keyring sign-in (see Keyring below).
 - **Shim:** `bin/dd-cli.mjs` is linked as `dd-cli` and forwards arguments to the real binary.
   On Windows it passes them to `wsl.exe`.
+- **Keyring (Windows):** gnome-keyring in WSL re-locks every time the WSL VM restarts, so
+  each `dd-cli` call would pop an unlock prompt. `s dd-cli install` drops
+  `lib/s_file_keyring.py` next to dd-cli's bundled Python, and the shim selects it via
+  `PYTHON_KEYRING_BACKEND`. The sign-in is then stored unencrypted in
+  `~/.local/share/s/dd-cli/credentials.json` (mode 600) inside WSL, like `gh` or the AWS CLI
+  do without a keyring, so dd-cli runs unattended. The install copies an existing
+  gnome-keyring sign-in over once. Delete that file to sign out.
 - **Skill:** the tarball's `SKILL.md` is used as-is, and on Windows
   `skills/dd-cli-usage/windows-notes.md` is appended. The result is written to
   `~/.copilot/skills/dd-cli-usage/` and `~/.claude/skills/dd-cli-usage/`.

@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { installSkill, REPO_SKILLS_DIR, skillDrift } from "../lib/skills.mjs";
 
 export const description = "Install/upgrade DoorDash CLI + agent skill from a release tarball (install | check)";
@@ -19,7 +20,7 @@ const PLATFORM = WIN
 const WSL_ROOT_SETUP = String.raw`
 set -e
 export DEBIAN_FRONTEND=noninteractive
-pkgs="wslu"
+pkgs="wslu libsecret-tools"
 if [ "$(uname -m)" != x86_64 ]; then
   if ! dpkg --print-foreign-architectures | grep -qx amd64; then
     src=/etc/apt/sources.list.d/ubuntu.sources
@@ -64,6 +65,27 @@ grep -q '^export BROWSER=' "$rc" || echo 'export BROWSER=wslview' >> "$rc"
 const VENDOR_SKILL = `tar -xzOf "$1" --wildcards '*/skills/dd-cli-usage/SKILL.md'`;
 const INSTALLED_VERSION = `"$HOME/.local/bin/dd-cli" --version 2>/dev/null | sed 's/.*version //'`;
 
+// WSL only: gnome-keyring re-locks whenever the WSL VM restarts, so every dd-cli call would
+// pop an unlock prompt. This file-backed keyring backend is dropped next to dd-cli's bundled
+// Python, where the shim (bin/dd-cli.mjs) selects it via PYTHON_KEYRING_BACKEND.
+const KEYRING_FILE = "s_file_keyring.py";
+const KEYRING_DEST = `"$HOME/.local/bin/_internal/${KEYRING_FILE}"`;
+const KEYRING_INSTALL = String.raw`
+set -e
+[ -d "$HOME/.local/bin/_internal" ] || { echo "dd-cli has no _internal dir; cannot install keyring backend" >&2; exit 1; }
+install -m 644 "$1" ${KEYRING_DEST}
+`;
+const KEYRING_CHECK = `cmp -s "$1" ${KEYRING_DEST}`;
+const KEYRING_SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "lib", KEYRING_FILE);
+
+// Must match PATH in lib/s_file_keyring.py, and the service/username dd-cli stores its sign-in under.
+const STORE = `"\${XDG_DATA_HOME:-$HOME/.local/share}/s/dd-cli/credentials.json"`;
+const DD_SERVICE = "DoorDash CLI credentials";
+const DD_USER = "doordash-cli-user";
+const STORE_EXISTS = `[ -s ${STORE} ]`;
+const GNOME_LOOKUP = `command -v secret-tool >/dev/null && secret-tool lookup service "$1" username "$2"`;
+const STORE_WRITE = `umask 077; mkdir -p "$(dirname ${STORE})"; cat > ${STORE}`;
+
 export default function main(args) {
   const [cmd = "check", tarballArg] = args;
   if (!["install", "check"].includes(cmd)) {
@@ -85,6 +107,10 @@ export default function main(args) {
     console.log(`Binary:    ${installed === available ? "✓ matches tarball" : "⚠ differs — run: s dd-cli install"}`);
     console.log(`Skill:     ${drifted.length ? "⚠ out of sync — run: s dd-cli install" : "✓ in sync"}`);
     for (const d of drifted) console.log(`  ${d}`);
+    if (WIN) {
+      const ok = bash(KEYRING_CHECK, [toBashPath(KEYRING_SRC)]).status === 0;
+      console.log(`Keyring:   ${ok ? "✓ file-backed (no unlock prompts)" : "⚠ gnome-keyring (prompts) — run: s dd-cli install"}`);
+    }
     return;
   }
 
@@ -97,10 +123,30 @@ export default function main(args) {
   console.log("Installing binary...");
   bash(INSTALL, [toBashPath(tarball)], { inherit: true });
 
+  if (WIN) {
+    console.log("Installing file-backed keyring...");
+    bash(KEYRING_INSTALL, [toBashPath(KEYRING_SRC)], { inherit: true });
+    migrateSignIn();
+  }
+
   for (const t of installSkill(SKILL, skill)) console.log(`Skill:     ${t}`);
 
   console.log(`✓ dd-cli ${bash(INSTALLED_VERSION).stdout.trim()} installed.`);
-  console.log("Restart your agent (or /skills reload) to pick up the skill. First time? Run: dd-cli login");
+  console.log("Restart your agent (or /skills reload) to pick up the skill.");
+  if (!WIN || bash(STORE_EXISTS).status !== 0) console.log("Not signed in yet? Run: dd-cli login");
+}
+
+// One-time copy of an existing sign-in from gnome-keyring into the file store, so switching
+// backends doesn't force a new browser login. May show one last unlock prompt.
+function migrateSignIn() {
+  if (bash(STORE_EXISTS).status === 0) return;
+  console.log("Copying existing sign-in from gnome-keyring (unlock it if prompted)...");
+  const r = bash(GNOME_LOOKUP, [DD_SERVICE, DD_USER]);
+  const secret = r.status === 0 ? r.stdout.replace(/\n$/, "") : "";
+  if (!secret) return console.log("No existing sign-in found.");
+  const data = JSON.stringify({ [DD_SERVICE]: { [DD_USER]: secret } }, null, 2);
+  bash(STORE_WRITE, [], { input: data, check: true });
+  console.log("Sign-in copied.");
 }
 
 function findTarball() {
@@ -130,12 +176,13 @@ function buildSkill(tarball) {
   return skill;
 }
 
-function bash(script, args = [], { root = false, inherit = false } = {}) {
+function bash(script, args = [], { root = false, inherit = false, input, check = inherit } = {}) {
   const [exe, argv] = WIN
     ? ["wsl.exe", [...(root ? ["-u", "root"] : []), "-e", "bash", "-c", script, "bash", ...args]]
     : ["bash", ["-c", script, "bash", ...args]];
-  const r = spawnSync(exe, argv, { encoding: "utf8", stdio: inherit ? "inherit" : "pipe" });
-  if (inherit && r.status !== 0) {
+  const stdio = inherit ? "inherit" : input === undefined ? "pipe" : ["pipe", "inherit", "inherit"];
+  const r = spawnSync(exe, argv, { encoding: "utf8", stdio, input });
+  if (check && r.status !== 0) {
     console.error(`✗ Step failed (exit ${r.status}).`);
     process.exit(1);
   }
