@@ -297,6 +297,26 @@ doesn't work inside quotes.
 Containers run `sleep infinity` so they stay alive for `docker exec`. There's
 no long-running server process — the container is just an environment.
 
+### `s dd-cli` — DoorDash CLI + agent skill
+
+```bash
+s dd-cli check     # compare installed binary/skill against the newest tarball in ~/Downloads
+s dd-cli install   # install or upgrade from that tarball (or pass a path)
+```
+
+Download the release tarball from the dd-cli GitHub releases page first. On Windows,
+download the `linux-amd64` build. The binary and DoorDash's `SKILL.md` are never
+committed here; both come from the tarball each time.
+
+- **Windows:** the binary runs inside WSL. On ARM machines, the script installs amd64
+  multiarch and `qemu-user-static` so the x86-64 build can run. It also installs `wslu`
+  so `dd-cli login` can open the Windows browser via `wslview`.
+- **Shim:** `bin/dd-cli.mjs` is linked as `dd-cli` and forwards arguments to the real binary.
+  On Windows it passes them to `wsl.exe`.
+- **Skill:** the tarball's `SKILL.md` is used as-is, and on Windows
+  `skills/dd-cli-usage/windows-notes.md` is appended. The result is written to
+  `~/.copilot/skills/dd-cli-usage/` and `~/.claude/skills/dd-cli-usage/`.
+
 ## Development
 
 To test scripts locally without affecting the globally linked `s`:
